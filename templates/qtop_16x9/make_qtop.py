@@ -24,7 +24,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 W, H = 1920, 1080
-S = 0.75                 # reel -> page scale (reel grid 60px -> page grid 45px)
+S = 0.9                  # reel -> page scale (reel grid 60px -> page grid 54px)
 G = int(60 * S)
 BG = (239, 239, 229); GRID = (229, 229, 218)
 NAVY = (27, 33, 64); OR = (240, 106, 34); GREY = (105, 105, 105)
@@ -33,11 +33,12 @@ FD = '/usr/share/fonts/opentype/inter/'
 def F(w, s): return ImageFont.truetype(f'{FD}Inter-{w}.otf', s)
 
 # ---- reel crops (reel coords, multiples of 60 so grids line up) -> page pos
-CONTENT = dict(src=(0, 240, 1080, 900), dst=(90, 405))     # card area
-LABEL   = dict(src=(0, 148, 1080, 92), dst=(990, 471))    # TODAY'S QUESTION / STEP 01
-CAPTION = dict(src=(0, 1140, 1080, 180), dst=(990, 585))   # big caption
-PROG    = dict(src=(0, 1320, 1080, 240), dst=(990, 765))   # S1..S8 bar + cgpedu.com
-TOP_H = 405
+# page pos must satisfy p = S*src + k*G so the reel grid lines up with the page grid
+CONTENT = dict(src=(40, 240, 1000, 900), dst=(36, 270))     # card area
+LABEL   = dict(src=(30, 148, 1020, 92),  dst=(999, 349))    # STEP label row
+CAPTION = dict(src=(30, 1140, 1020, 180), dst=(999, 486))   # big caption
+PROG    = dict(src=(30, 1320, 1030, 240), dst=(999, 702))   # S1..S8 bar + cgpedu.com
+TOP_H = 270
 
 def grid_bg():
     im = Image.new('RGB', (W, H), BG); d = ImageDraw.Draw(im)
@@ -84,32 +85,32 @@ def key_logo(frame_png):
 def top_card(cfg, logo, answered):
     im = Image.new('RGBA', (W, TOP_H), (0, 0, 0, 0))
     sh = Image.new('L', (W, TOP_H), 0)
-    ImageDraw.Draw(sh).rounded_rectangle([50, 28, W - 50, TOP_H - 14], 30, fill=70)
+    ImageDraw.Draw(sh).rounded_rectangle([40, 18, W - 40, TOP_H - 4], 26, fill=70)
     sh = sh.filter(ImageFilter.GaussianBlur(12))
     im.paste((150, 150, 140, 255), (0, 0), sh)
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle([45, 20, W - 45, TOP_H - 22], 30, fill=(255, 255, 255, 255))
+    d.rounded_rectangle([30, 10, W - 30, TOP_H - 12], 26, fill=(255, 255, 255, 255))
     # header row: pill + label + small logo
-    pf = F('Bold', 24); pw = d.textlength(cfg['qno'], font=pf)
-    d.rounded_rectangle([90, 44, 90 + pw + 36, 84], 20, fill=(240, 240, 232))
-    d.text((108, 49), cfg['qno'], font=pf, fill=NAVY)
-    d.text((90 + pw + 60, 50), "TODAY'S QUESTION", font=F('Bold', 22), fill=GREY)
-    lg = logo.copy(); lg.thumbnail((90, 62), Image.LANCZOS)
-    im.alpha_composite(lg, (W - 90 - lg.width, 34))
+    pf = F('Bold', 22); pw = d.textlength(cfg['qno'], font=pf)
+    d.rounded_rectangle([66, 24, 66 + pw + 32, 58], 17, fill=(240, 240, 232))
+    d.text((82, 28), cfg['qno'], font=pf, fill=NAVY)
+    d.text((66 + pw + 52, 30), "TODAY'S QUESTION", font=F('Bold', 20), fill=GREY)
+    lg = logo.copy(); lg.thumbnail((80, 46), Image.LANCZOS)
+    im.alpha_composite(lg, (W - 66 - lg.width, 18))
     # question text (auto-fit to 3 lines)
-    maxw = W - 180
-    for size in (36, 34, 32, 30, 28):
+    maxw = W - 132
+    for size in (32, 30, 29, 28, 26):
         f, fs = F('SemiBold', size), F('SemiBold', int(size * 0.62))
         lines = wrap(d, cfg['question'], f, fs, maxw)
         if len(lines) <= 3: break
-    lh = int(size * 1.36); y = 102 + (3 - len(lines)) * lh // 2
-    for ln in lines: rich(d, 90, y, ln, f, fs, NAVY); y += lh
+    lh = int(size * 1.3); y = 66 + (3 - len(lines)) * lh // 2
+    for ln in lines: rich(d, 66, y, ln, f, fs, NAVY); y += lh
     # options row
     n = len(cfg['options']); gap = 24; ow = (maxw - gap * (n - 1)) / n
-    oy0, oy1 = 300, 364
-    of, ofs = F('SemiBold', 28), F('SemiBold', 18)
+    oy0, oy1 = 194, 246
+    of, ofs = F('SemiBold', 26), F('SemiBold', 17)
     for i, o in enumerate(cfg['options']):
-        L = 'ABCD'[i]; x0 = 90 + i * (ow + gap); x1 = x0 + ow
+        L = 'ABCD'[i]; x0 = 66 + i * (ow + gap); x1 = x0 + ow
         right = answered and L == cfg['answer']
         d.rounded_rectangle([x0, oy0, x1, oy1], 14, fill=GREEN_BG if right else (255, 255, 255),
                             outline=GREEN if right else LINE, width=3)
@@ -120,12 +121,14 @@ def top_card(cfg, logo, answered):
         else:
             d.ellipse([x0 + 18, cy - 15, x0 + 48, cy + 15], outline=NAVY, width=3)
         col = GREEN if right else NAVY
-        tx = x0 + 64; d.text((tx, cy - 18), f'{L}.', font=F('ExtraBold', 28), fill=col)
-        rich(d, tx + 40, cy - 18, o, of, ofs, col)
+        tx = x0 + 62; d.text((tx, cy - 16), f'{L}.', font=F('ExtraBold', 26), fill=col)
+        rich(d, tx + 38, cy - 16, o, of, ofs, col)
     return im
 
 def intro_card():
-    x0, y0 = CONTENT['dst']; x1, y1 = x0 + 810, y0 + 675
+    sx, sy = CONTENT['src'][:2]; dx, dy = CONTENT['dst']
+    x0 = dx + (70 - sx) * S; x1 = dx + (1010 - sx) * S
+    y0 = dy + (290 - sy) * S - 40; y1 = dy + (1085 - sy) * S + 50
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     sh = Image.new('L', (W, H), 0)
     ImageDraw.Draw(sh).rounded_rectangle([x0 + 8, y0 + 50, x1 - 8, y1 - 40], 30, fill=60)
@@ -138,11 +141,11 @@ def intro_card():
     d.rectangle([cx - 16, y0 + 160, cx + 16, y0 + 215], fill=OR)
     def ct(t, y, f, c):
         d.text((cx - d.textlength(t, font=f) / 2, y), t, font=f, fill=c)
-    ct('Read the question', y0 + 250, F('ExtraBold', 52), NAVY)
-    ct('carefully', y0 + 318, F('ExtraBold', 52), OR)
-    d.line([(cx - 50, y0 + 410), (cx + 50, y0 + 410)], fill=OR, width=4)
-    ct('It stays on top till the end —', y0 + 440, F('SemiBold', 28), GREY)
-    ct('solution starts in the next step', y0 + 480, F('SemiBold', 28), GREY)
+    ct('Read the question', y0 + 260, F('ExtraBold', 60), NAVY)
+    ct('carefully', y0 + 335, F('ExtraBold', 60), OR)
+    d.line([(cx - 50, y0 + 440), (cx + 50, y0 + 440)], fill=OR, width=4)
+    ct('It stays on top till the end —', y0 + 475, F('SemiBold', 32), GREY)
+    ct('solution starts in the next step', y0 + 522, F('SemiBold', 32), GREY)
     return im
 
 def end_card(cfg, logo):
