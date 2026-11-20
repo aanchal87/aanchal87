@@ -72,7 +72,11 @@ def q_tokens(q):
             txt, lv = part[2:-2].rsplit('|', 1)
             toks += [(w, int(lv)) for w in txt.split()]
         else:
-            toks += [(w, None) for w in part.split()]
+            for w in part.split():
+                if toks and re.match(r'^[.,;:!?)]', w):
+                    pw, pl = toks.pop(); toks += [(pw, pl), ('\x00' + w, None)]
+                else:
+                    toks.append((w, None))
     return toks
 
 def key_logo(frame_png):
@@ -103,8 +107,12 @@ def top_card(cfg, logo, hl_level, answered):
         f, fb, fs = F('SemiBold', size), F('Bold', size), F('SemiBold', int(size * .62))
         sp = d.textlength(' ', font=f); lines, cur, cw = [], [], 0
         for w, lv in toks:
+            glue = w.startswith('\x00'); w = w.lstrip('\x00')
             ww = rich_w(d, w, fb if lv else f, fs)
-            if cur and cw + sp + ww > maxw: lines.append(cur); cur, cw = [], 0
+            if cur and not glue and cw + sp + ww > maxw: lines.append(cur); cur, cw = [], 0
+            if glue and cur:   # merge into previous word (keeps its colour box tight)
+                pw, plv, pww = cur[-1]; cur[-1] = (pw, plv, pww); cur.append((w, None, ww)); cw += ww
+                cur[-2] = (pw, plv, pww - 0.0); cur[-1] = ('\x00' + w, None, ww); continue
             cw += (sp if cur else 0) + ww; cur.append((w, lv, ww))
         lines.append(cur)
         if len(lines) <= 3: break
@@ -124,9 +132,11 @@ def top_card(cfg, logo, hl_level, answered):
                 for k in range(i, j): x += ln[k][2] + sp
                 i = j
             else:
+                if w.startswith('\x00'): x -= sp
                 x += ww + sp; i += 1
         x = 66
-        for w, lv, ww in ln:
+        for k2, (w, lv, ww) in enumerate(ln):
+            if w.startswith('\x00'): x -= sp; w = w[1:]
             on = lv is not None and lv <= hl_level
             rich(d, x, y, w, fb if on else f, fs, OR if on else NAVY); x += ww + sp
         y += lh
@@ -152,7 +162,7 @@ def top_card(cfg, logo, hl_level, answered):
 # ---------- step-1 card: GIVEN / TO FIND (state after beat b)
 def given_card(cfg, b):
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    x0, y0, x1, y1 = 70, 300, 930, 1050
+    x0, y0, x1, y1 = 48, 296, 940, 1068
     sh = Image.new('L', (W, H), 0)
     ImageDraw.Draw(sh).rounded_rectangle([x0 + 6, y0 + 12, x1 - 6, y1 + 6], 30, fill=60)
     im.paste((150, 150, 140, 255), (0, 0), sh.filter(ImageFilter.GaussianBlur(14)))
