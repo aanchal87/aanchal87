@@ -1,0 +1,11 @@
+{
+  "video": "/root/.claude/uploads/ec733dbc-f0e5-5789-a14f-a2d84dba5e50/139222d5-Q03_RC_voltage_impedance.mp4",
+  "out": "/home/user/aanchal87/Q03_RC_voltage_impedance_16x9_qtop.mp4",
+  "qno": "Q.3/57",
+  "question": "An alternating current of 1.5 mA and angular frequency 300 rad/s flows through a 10 kΩ resistor and a 0.50 μF capacitor in series. Find the rms voltage across the capacitor and also calculate the impedance of the circuit.",
+  "options": ["10 V; 1.2 × 10^{4} Ω", "10^{4} V; 10^{4} Ω", "50 V; 1.0 × 10^{4} Ω", "10 V; 10 Ω"],
+  "answer": "A",
+  "answer_at": 75.7,
+  "endcard_at": 90.5,
+  "intro_until": 15.65
+}
